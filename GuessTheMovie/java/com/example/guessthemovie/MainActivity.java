@@ -21,6 +21,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,6 +34,8 @@ public class MainActivity extends AppCompatActivity {
     private Button[] buttons = new Button[4];
     private final String base = "https://www.filmweb.pl/ajax/ranking/film/";
     private final Random random = new Random();
+
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private Bitmap bitmap;
     private String[] names = new String[4];
@@ -60,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void nextTurn() {
-        Thread thread = new Thread(new Runnable() {
+        FutureTask<String> futureTask = new FutureTask<>(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -90,10 +96,6 @@ public class MainActivity extends AppCompatActivity {
                     for (int i = 0; i < movies.size(); i++)
                         Log.i("Movie " + i + ":", movies.get(i).name + " " + movies.get(i).imageUrl);
 
-                    // something went wrong
-//                    if (i < 24)
-//                        throw new RuntimeException("Not enough images");
-
                     // choose random answers
                     List<Integer> rands = new ArrayList<>();
                     for (int i = 0; i < 4; i++) {
@@ -121,17 +123,14 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-        });
+        }, "Task completed");
 
-        thread.start();
+        executor.execute(futureTask);
 
-        try {
-            thread.join();
-            imageView.setImageBitmap(bitmap);
-            for (int i = 0; i < 4; i++)
-                buttons[i].setText(names[i]);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        while (!futureTask.isDone());
+
+        imageView.setImageBitmap(bitmap);
+        for (int i = 0; i < 4; i++)
+            buttons[i].setText(names[i]);
     }
 }
